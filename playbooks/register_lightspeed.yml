@@ -11,16 +11,11 @@
       ansible.builtin.debug:
         msg: "Sandbox ID for this lab: {{ sandbox_id }}"
 
-    - name: Check current RHSM identity
-      ansible.builtin.command:
-        cmd: subscription-manager identity
-      register: rhsm_identity
-      changed_when: false
-      failed_when: false
-
-    - name: Display current RHSM account
-      ansible.builtin.debug:
-        msg: "{{ rhsm_identity.stdout_lines | default(['Not registered']) }}"
+    - name: Save original rhsm.conf before reconfiguring
+      ansible.builtin.copy:
+        src: /etc/rhsm/rhsm.conf
+        dest: /etc/rhsm/rhsm.conf.satellite-backup
+        remote_src: true
 
     - name: Disconnect from current RHC registration
       ansible.builtin.command:
@@ -28,7 +23,7 @@
       failed_when: false
       changed_when: true
 
-    - name: Point subscription-manager back to Red Hat CDN
+    - name: Point subscription-manager to Red Hat CDN for rhc connect
       ansible.builtin.command:
         cmd: >-
           subscription-manager config
@@ -52,15 +47,11 @@
       ansible.builtin.debug:
         msg: "{{ rhc_result.stdout_lines }}"
 
-    - name: Verify RHSM registration
-      ansible.builtin.command:
-        cmd: subscription-manager identity
-      register: rhsm_verify
-      changed_when: false
-
-    - name: Display new RHSM account info
-      ansible.builtin.debug:
-        msg: "{{ rhsm_verify.stdout_lines }}"
+    - name: Restore original rhsm.conf (keep satellite repo config)
+      ansible.builtin.copy:
+        src: /etc/rhsm/rhsm.conf.satellite-backup
+        dest: /etc/rhsm/rhsm.conf
+        remote_src: true
 
     - name: Write custom tags for lab grouping
       ansible.builtin.copy:
